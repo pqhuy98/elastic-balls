@@ -4,8 +4,10 @@ import {
     add, magn, mod, mul, randomFloat, magn2,
     randomVec2, sub, randomColor, vec2, norm,
     tangent, dot, zero, reflect, scale, distance,
-    clipVec, randomExp, clip
+    clipVec, randomExp, clip, randomNiceColor,
+    pickRandom, randomInt
 } from "./math/index.js";
+import { calculateNewVelo, gravity } from "./math/physics.js";
 
 const MAX_FPS = 99;
 const config = {}
@@ -13,11 +15,16 @@ const config = {}
 function generateConfig() {
     config.CIRCLE_COUNT = randomExp(100, 3000);
     config.CoeffRestitution = randomExp(0.8, 1);
-    config.MAX_INITIAL_VELO = 100;
+    config.MAX_INITIAL_VELO = randomExp(100, 1000);
     config.mouseRadius = 10;
-    config.density = randomFloat(0.7, 1.2);
+    config.density = randomFloat(0.5, 1.2);
     config.maxRadius = config.density * Math.sqrt(window.innerWidth * window.innerHeight / config.CIRCLE_COUNT);
-    config.maxMouseRadius = 10 * config.maxRadius;
+    config.maxMouseRadius = 3 * config.maxRadius;
+    config.colorCount = randomInt(2, 5);
+    config.hasWall = {
+        x: pickRandom([true, false]),
+        y: pickRandom([true, false]),
+    }
 }
 generateConfig();
 
@@ -30,7 +37,6 @@ class Game {
         this.mouse = mul(this.size, 0.5);
         this.mouseTime = performance.now();
         this.debug = {};
-        this.colorTransition = new ColorTransition({ stepCount: 300 });
         this.lastTime = performance.now();
 
         const canvas = document.getElementById("main");
@@ -51,12 +57,18 @@ class Game {
                 pos: vec2(randomFloat(0, this.size.x), randomFloat(0, this.size.y)),
                 velo: vec2(randomFloat(-config.MAX_INITIAL_VELO, config.MAX_INITIAL_VELO), randomFloat(-config.MAX_INITIAL_VELO, config.MAX_INITIAL_VELO)),
                 r: randomExp(1, config.maxRadius),
-                accel: vec2(0, 0),
+                accel: gravity(),
                 mass: 0,
-                color: "yellow",
             });
         }
+
+        this.colorTransitions = []
+        for (let i = 0; i < config.colorCount; i++) {
+            this.colorTransitions.push(new ColorTransition({ stepCount: 300 }));
+        }
+
         this.circles.forEach(c => {
+            c.colorTransition = pickRandom(this.colorTransitions);
             c.mass = c.r;
         })
     }
@@ -69,15 +81,20 @@ class Game {
     }
 
     update(dt) {
-        this.colorTransition.update();
+        this.colorTransitions.forEach(ct => ct.update());
 
+        this.circles.forEach((c) => {
+            if (!this.colorTransitions.includes(c.colorTransition)) {
+                c.colorTransition.update();
+            }
+        });
         const posImpulse = {}, collisionCount = {}, curT = {};
 
         // update position
         this.circles.forEach((c, i) => {
             let threshold = config.mouseRadius + c.r;
             if (magn2(sub(this.mouse, c.pos)) <= threshold * threshold) {
-                c.velo = add(c.velo, scale(sub(c.pos, this.mouse), 0.1 * threshold));
+                c.velo = add(c.velo, scale(sub(c.pos, this.mouse), 10 * dt * threshold));
             }
             c.velo = add(c.velo, mul(c.accel, dt))
             posImpulse[i] = zero()
@@ -103,24 +120,7 @@ class Game {
             c1 = this.circles[c1.id];
             c2 = this.circles[c2.id];
 
-            let sumVM12 = add(mul(c1.velo, c1.mass), mul(c2.velo, c2.mass));
-            let inverseTotalMass = 1 / (c1.mass + c2.mass)
-            let newVelo1 = mul(
-                add(
-                    mul(sub(c2.velo, c1.velo), config.CoeffRestitution * c2.mass),
-                    sumVM12,
-                ),
-                inverseTotalMass
-            );
-            let newVelo2 = mul(
-                add(
-                    mul(sub(c1.velo, c2.velo), config.CoeffRestitution * c1.mass),
-                    sumVM12,
-                ),
-                inverseTotalMass
-            );
-            c1.velo = newVelo1;
-            c2.velo = newVelo2;
+            calculateNewVelo(c1, c2, config.CoeffRestitution);
 
             let overlapDistance = c1.r + c2.r - distance(c1.pos, c2.pos);
             let dis = scale(sub(c1.pos, c2.pos), overlapDistance);
@@ -141,21 +141,38 @@ class Game {
 
         // Wall collision
         this.circles.forEach((c) => {
-            if (c.pos.x - c.r < 0) {
-                c.pos.x = c.r;
-                c.velo.x *= -config.CoeffRestitution;
+            if (c.pos.x + 2 * c.r < 0) {
+                c.pos.x = this.size.x + 2 * c.r;
             }
-            if (c.pos.x + c.r > this.size.x) {
-                c.pos.x = this.size.x - c.r;
-                c.velo.x *= -config.CoeffRestitution;
+            if (c.pos.x - 2 * c.r > this.size.x) {
+                c.pos.x = -2 * c.r;
             }
-            if (c.pos.y - c.r < 0) {
-                c.pos.y = c.r;
-                c.velo.y *= -config.CoeffRestitution;
+            if (c.pos.y + 2 * c.r < 0) {
+                c.pos.y = this.size.y + 2 * c.r;
             }
-            if (c.pos.y + c.r > this.size.y) {
-                c.pos.y = this.size.y - c.r;
-                c.velo.y *= -config.CoeffRestitution;
+            if (c.pos.y - 2 * c.r > this.size.y) {
+                c.pos.y = -2 * c.r;
+            }
+
+            if (config.hasWall.x) {
+                if (c.pos.x - c.r < 0) {
+                    c.pos.x = c.r;
+                    c.velo.x *= -config.CoeffRestitution;
+                }
+                if (c.pos.x + c.r > this.size.x) {
+                    c.pos.x = this.size.x - c.r;
+                    c.velo.x *= -config.CoeffRestitution;
+                }
+            }
+            if (config.hasWall.y) {
+                if (c.pos.y - c.r < 0) {
+                    c.pos.y = c.r;
+                    c.velo.y *= -config.CoeffRestitution;
+                }
+                if (c.pos.y + c.r > this.size.y) {
+                    c.pos.y = this.size.y - c.r;
+                    c.velo.y *= -config.CoeffRestitution;
+                }
             }
         });
     }
@@ -167,13 +184,13 @@ class Game {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         // draw outer
-        ctx.beginPath();
-        ctx.strokeStyle = this.colorTransition.getColor();
         this.circles.forEach((c) => {
+            ctx.beginPath();
+            ctx.strokeStyle = c.colorTransition.getColor();
             ctx.moveTo(c.pos.x + c.r, c.pos.y);
             ctx.arc(c.pos.x, c.pos.y, c.r, 0, 2 * Math.PI);
+            ctx.stroke();
         });
-        ctx.stroke();
 
         // draw FPS
         ctx.font = '16px Verdana';
@@ -181,12 +198,11 @@ class Game {
 
         ctx.textAlign = "left"
         ctx.fillText('HOVER - WHEEL - [R]', 12, 30);
-        ctx.fillText("OBJECTS: " + this.circles.length, 12, this.size.y - 12);
+        // ctx.fillText("OBJECTS: " + this.circles.length, 12, this.size.y - 12);
 
         ctx.textAlign = "right"
         ctx.fillText('FPS: ' + this.fps.toFixed(1), this.size.x - 12, 12 + 16);
-        ctx.fillText(JSON.stringify(this.debug, 0, 2), this.size.x - 12, this.size.y - 12);
-        // ctx.fillText("OBJECTS: " + this.circles.length, 10, this.size.y - 10);
+        // ctx.fillText(JSON.stringify(this.debug, 0, 2), this.size.x - 12, this.size.y - 12);
     }
 }
 

@@ -1,64 +1,82 @@
+import { add, dot, magn, mul, norm, scale, sub, vec2 } from "./linear_algebra.js";
+import { pickRandom } from "./random.js";
+
 const EPS = 1e-7;
 
-/**
- * Check if body1 and body will ever collide.
- * @returns earliest time when collision happens, or null if thre will be no collision
- */
-export function willCollide(body1, body2) {
-    let R = body1.r + body2.r;
-    let x = body1.pos.x;
-    let y = body1.pos.y;
-    let dx = body1.velo.x;
-    let dy = body1.velo.y;
-    let u = body2.pos.x;
-    let v = body2.pos.y;
-    let du = body2.velo.x;
-    let dv = body2.velo.y;
-    let a = (dx - du) * (dx - du) + (dy - dv) * (dy - dv); // a is always non-negative
-    let b = 2 * ((dx - du) * (x - u) + (dy - dv) * (y - v));
-    let c = (x - u) * (x - u) + (y - v) * (y - v) - R * R;
+export function gravity() {
+    return pickRandom([
+        vec2(0, 0),
+        // vec2(0, 100),
+        // vec2(0, -100),
+    ])
+}
 
-    if (a < EPS) { // a == 0
-        // this is a linear inequality b*t + c <= 0
-        if (b > 0) {
-            // t <= c/b
-            return 0; // two bodies already collide
-        } else if (b < 0) {
-            // t >= c/b
-            return c / b; // they will collide when t = c/b
-        } else { // b == 0
-            // solve inequality 0*t + c <= 0
-            if (c < 0) {
-                return 0; // two bodies already collide at t = 0
-            } else {
-                return null; // they will not collide
-            }
-        }
-    } else {
-        // this is a quadratic inequality a*t^2 + b*t + c <= 0
-        let discriminant = b * b - 4 * a * c;
-        if (Math.abs(discriminant) < EPS) { // discriminant == 0
-            let sol = -b / 2 / a;
-            if (sol < -EPS) {
-                // they collided in the past, and will not in the future
-                return null;
-            } else {
-                // found exactly one solution
-                return sol;
-            }
-        } else if (discriminant > 0) {
-            let sqrtD = Math.sqrt(discriminant);
-            let sol1 = (-b - sqrtD) / 2 / a;
-            let sol2 = (-b + sqrtD) / 2 / a;
-            if (sol2 < 0) {
-                return null; // no solution
-            } else {
-                // sol1 < 0 --> 0
-                // 0 < sol1 --> sol1
-                return Math.max(0, sol1);
-            }
-        } else { // discriminant < 0
-            return null; // no solution
-        }
-    }
+export function calculateNewVelo(c1, c2, CoeffRestitution) {
+    let n = norm(sub(c1.pos, c2.pos));
+    let newVelo1 = sub(
+        c1.velo,
+        mul(n,
+            dot(n, sub(c1.velo, c2.velo)) * 2 * c2.mass / (c1.mass + c2.mass)
+        )
+    );
+    let newVelo2 = sub(
+        c2.velo,
+        mul(n,
+            dot(n, sub(c2.velo, c1.velo)) * 2 * c1.mass / (c1.mass + c2.mass)
+        )
+    );
+
+    newVelo1 = mul(newVelo1, CoeffRestitution);
+    newVelo2 = mul(newVelo2, CoeffRestitution);
+
+    c1.velo = newVelo1;
+    c2.velo = newVelo2;
+}
+
+export function __calculateNewVelo(c1, c2, CoeffRestitution) {
+    let sumVM12 = add(mul(c1.velo, c1.mass), mul(c2.velo, c2.mass));
+    let inverseTotalMass = 1 / (c1.mass + c2.mass)
+    let newVelo1 = mul(
+        add(
+            mul(sub(c2.velo, c1.velo), c2.mass),
+            sumVM12,
+        ),
+        CoeffRestitution * inverseTotalMass
+    );
+    let newVelo2 = mul(
+        add(
+            mul(sub(c1.velo, c2.velo), c1.mass),
+            sumVM12,
+        ),
+        CoeffRestitution * inverseTotalMass
+    );
+
+    c1.velo = newVelo1;
+    c2.velo = newVelo2;
+}
+
+export function _calculateNewVelo(c1, c2, CoeffRestitution) {
+    let sumVM12 = add(mul(c1.velo, c1.mass), mul(c2.velo, c2.mass));
+    let inverseTotalMass = 1 / (c1.mass + c2.mass)
+    let newVelo1M = magn(mul(
+        add(
+            mul(sub(c2.velo, c1.velo), c2.mass),
+            sumVM12,
+        ),
+        CoeffRestitution * inverseTotalMass
+    ));
+    let newVelo2M = magn(mul(
+        add(
+            mul(sub(c1.velo, c2.velo), c1.mass),
+            sumVM12,
+        ),
+        CoeffRestitution * inverseTotalMass
+    ));
+
+    let n = norm(sub(c1.pos, c2.pos))
+    let newVelo1 = scale(sub(c1.velo, mul(n, 2 * dot(n, c1.velo))), newVelo1M);
+    let newVelo2 = scale(sub(c2.velo, mul(n, 2 * dot(n, c2.velo))), newVelo2M);
+
+    c1.velo = newVelo1;
+    c2.velo = newVelo2;
 }

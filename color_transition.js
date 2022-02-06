@@ -1,4 +1,4 @@
-import { hexToRgb, randomColor, randomInt, rgbToHex, hslToRgb } from "./math/index.js";
+import { hexToRgb, randomColor, randomInt, rgbToHex, hslToRgb, randomNiceRgb } from "./math/index.js";
 
 export default class ColorTransition {
     constructor({ startingColor, stepCount }) {
@@ -31,12 +31,4 @@ function interpolateColor(fromColor, toColor, percentage) {
         g: fromColor.g * (1 - percentage) + toColor.g * percentage,
         b: fromColor.b * (1 - percentage) + toColor.b * percentage,
     }
-}
-
-function randomNiceRgb() {
-    let h = randomInt(0, 360),
-        s = randomInt(42, 98),
-        l = randomInt(40, 90);
-    let [r, g, b] = hslToRgb(h, s, l);
-    return { r, g, b }
 }
