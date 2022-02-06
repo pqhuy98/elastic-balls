@@ -17,7 +17,7 @@ function generateConfig() {
     config.CoeffRestitution = randomExp(0.8, 1);
     config.MAX_INITIAL_VELO = randomExp(100, 1000);
     config.mouseRadius = 10;
-    config.density = randomFloat(0.5, 1.2);
+    config.density = randomFloat(0.8, 1.2);
     config.maxRadius = config.density * Math.sqrt(window.innerWidth * window.innerHeight / config.CIRCLE_COUNT);
     config.maxMouseRadius = 3 * config.maxRadius;
     config.colorCount = randomInt(2, 5);
