@@ -1,10 +1,11 @@
 import { hexToRgb, randomColor, randomInt, rgbToHex, hslToRgb, randomNiceRgb } from "./math/index.js";
 
 export default class ColorTransition {
-    constructor({ startingColor, stepCount }) {
+    constructor({ startingColor, stepCount, colorGenerator }) {
         startingColor = startingColor || randomColor();
+        this.colorGenerator = colorGenerator || randomNiceRgb;
         this.currentColor = hexToRgb(startingColor);
-        this.targetColor = randomNiceRgb();
+        this.targetColor = this.colorGenerator();
         this.stepCount = stepCount;
         this.currentStep = stepCount;
     }
@@ -12,7 +13,7 @@ export default class ColorTransition {
     update() {
         if (this.currentStep === this.stepCount) {
             this.currentColor = this.targetColor;
-            this.targetColor = randomNiceRgb();
+            this.targetColor = this.colorGenerator();
             this.currentStep = 0
         }
         this.currentStep++;

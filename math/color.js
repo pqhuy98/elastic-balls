@@ -2,10 +2,17 @@ import { pickRandom, randomInt } from "./random.js";
 
 export function randomNiceRgb() {
     return hexToRgb(pickRandom(predefinedColor));
+    let h = randomInt(0, 360),
+        s = randomInt(42, 98),
+        l = randomInt(75, 90);
+    let [r, g, b] = hslToRgb(h, s, l);
+    return { r, g, b }
+}
 
+export function randomDarkRgb() {
     let h = randomInt(0, 360),
         s = 100,//randomInt(42, 98),
-        l = 75 //randomInt(75, 90);
+        l = randomInt(0, 6);
     let [r, g, b] = hslToRgb(h, s, l);
     return { r, g, b }
 }
@@ -62,10 +69,6 @@ export function hslToRgb(h, s, l) {
 }
 
 const predefinedColor = [
-    "#000000",
-    "#000000",
-    "#000000",
-    "#000000",
     "#000000",
     "#000000",
     "#000000",

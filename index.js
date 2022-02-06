@@ -5,7 +5,7 @@ import {
     randomVec2, sub, randomColor, vec2, norm,
     tangent, dot, zero, reflect, scale, distance,
     clipVec, randomExp, clip, randomNiceColor,
-    pickRandom, randomInt
+    pickRandom, randomInt, randomDarkRgb
 } from "./math/index.js";
 import { calculateNewVelo, gravity } from "./math/physics.js";
 
@@ -16,7 +16,7 @@ function generateConfig() {
     config.CIRCLE_COUNT = randomExp(100, 3000);
     config.CoeffRestitution = randomExp(0.8, 1);
     config.MAX_INITIAL_VELO = randomExp(100, 500);
-    config.mouseRadius = 10;
+    config.mouseRadius = 50;
     config.density = randomFloat(0.8, 1.2);
     config.maxRadius = config.density * Math.sqrt(window.innerWidth * window.innerHeight / config.CIRCLE_COUNT);
     config.maxMouseRadius = 3 * config.maxRadius;
@@ -66,6 +66,10 @@ class Game {
         for (let i = 0; i < config.colorCount; i++) {
             this.colorTransitions.push(new ColorTransition({ stepCount: 300 }));
         }
+        this.backgroundColorTransition = new ColorTransition({
+            stepCount: 300,
+            colorGenerator: randomDarkRgb,
+        });
 
         this.circles.forEach(c => {
             c.colorTransition = pickRandom(this.colorTransitions);
@@ -81,6 +85,7 @@ class Game {
     }
 
     update(dt) {
+        this.backgroundColorTransition.update();
         this.colorTransitions.forEach(ct => ct.update());
 
         this.circles.forEach((c) => {
@@ -182,6 +187,7 @@ class Game {
         ctx.canvas.width = this.size.x;
         ctx.canvas.height = this.size.y;
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        document.getElementById("main").style.backgroundColor = this.backgroundColorTransition.getColor();
 
         // draw outer
         this.colorTransitions.forEach(ct => {
