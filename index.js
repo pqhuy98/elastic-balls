@@ -15,12 +15,12 @@ const config = {}
 function generateConfig() {
     config.CIRCLE_COUNT = randomExp(100, 3000);
     config.CoeffRestitution = randomExp(0.8, 1);
-    config.MAX_INITIAL_VELO = randomExp(100, 1000);
+    config.MAX_INITIAL_VELO = randomExp(100, 500);
     config.mouseRadius = 10;
     config.density = randomFloat(0.8, 1.2);
     config.maxRadius = config.density * Math.sqrt(window.innerWidth * window.innerHeight / config.CIRCLE_COUNT);
     config.maxMouseRadius = 3 * config.maxRadius;
-    config.colorCount = randomInt(2, 5);
+    config.colorCount = randomExp(1, 30);
     config.hasWall = {
         x: pickRandom([true, false]),
         y: pickRandom([true, false]),
@@ -184,13 +184,17 @@ class Game {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         // draw outer
-        this.circles.forEach((c) => {
+        this.colorTransitions.forEach(ct => {
             ctx.beginPath();
-            ctx.strokeStyle = c.colorTransition.getColor();
-            ctx.moveTo(c.pos.x + c.r, c.pos.y);
-            ctx.arc(c.pos.x, c.pos.y, c.r, 0, 2 * Math.PI);
+            ctx.strokeStyle = ct.getColor();
+            this.circles.forEach((c) => {
+                if (c.colorTransition === ct) {
+                    ctx.moveTo(c.pos.x + c.r, c.pos.y);
+                    ctx.arc(c.pos.x, c.pos.y, c.r, 0, 2 * Math.PI);
+                }
+            });
             ctx.stroke();
-        });
+        })
 
         // draw FPS
         ctx.font = '16px Verdana';
