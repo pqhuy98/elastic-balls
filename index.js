@@ -34,6 +34,7 @@ class Game {
         this.circles = [];
         this.size = vec2(window.innerWidth, window.innerHeight);
         this.fps = 0;
+        this.kineticEnergy = 0;
         this.mouse = mul(this.size, 0.5);
         this.mouseTime = performance.now();
         this.debug = {};
@@ -180,6 +181,11 @@ class Game {
                 }
             }
         });
+
+        this.kineticEnergy = 0;
+        this.circles.forEach(c => {
+            this.kineticEnergy += c.mass * magn2(c.velo);
+        });
     }
 
     render(dt) {
@@ -209,10 +215,11 @@ class Game {
         ctx.textAlign = "left"
         ctx.fillText('HOVER - WHEEL - [R]', 12, 30);
         // ctx.fillText("OBJECTS: " + this.circles.length, 12, this.size.y - 12);
+        ctx.fillText("ln(KE): " + Math.log(this.kineticEnergy).toFixed(2), 12, this.size.y - 12);
+        // ctx.fillText("energy: " + this.kineticEnergy.toFixed(2), 12, this.size.y - 36);
 
         ctx.textAlign = "right"
         ctx.fillText('FPS: ' + this.fps.toFixed(1), this.size.x - 12, 12 + 16);
-        // ctx.fillText(JSON.stringify(this.debug, 0, 2), this.size.x - 12, this.size.y - 12);
     }
 }
 
